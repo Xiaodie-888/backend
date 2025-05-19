@@ -6,6 +6,7 @@ app.use(cors())
 
 const multer = require('multer')
 const upload = multer({ dest:'public/upload'})
+app.use(upload.any())// 挂载upload为全局中间件
 
 app.get('/', (req, res) => {
     res.send('hello express');
@@ -20,16 +21,23 @@ app.use((req,res,next)=>{
     }
     next()
 })
-app.use(upload.any())
+
 app.use(express.static('public')); 
 app.use(express.urlencoded({ extended: false })); // 解析传统表单数据（application/x-www-form-urlencoded）
 app.use(express.json()); // 解析JSON格式数据（如AJAX提交的复杂表单）
 
 
 const loginRouter = require('./router/login')
-app.use('/api',loginRouter)
+app.use('/api', loginRouter)
 const userRouter = require('./router/user')
-app.use('/user',userRouter)
+app.use('/user', userRouter)
+const productRouter = require('./router/product')
+app.use('/product', productRouter)
+const loginLogRouter = require('./router/login_log.js')
+app.use('/log', loginLogRouter)
+const operationRouter = require('./router/operation_log.js')
+app.use('/operation', operationRouter)
+
 
 const fs = require('fs')
 //异步写入
@@ -72,8 +80,8 @@ const fs = require('fs')
 //文件重命名
 // fs.renameSync('./public/test.txt','./public/测试.txt')
 
-app.listen(3000, () => {
-    console.log('http://127.0.0.1:3000');
+app.listen(3007, () => {
+    console.log('http://127.0.0.1:3007');
 });
 
 // const http = require('http'); // 导入http模块

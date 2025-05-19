@@ -143,41 +143,172 @@ exports.thawUser = (req, res) => {
 }
 
 
-// 获取正常用户列表
-exports.getHawUserList = (req, res) => {
-    const sql = 'select * from users where status = 0 '
-    db.query(sql, (err, result) => {
-        if (err) return res.ce(err);
-        result.forEach((e) => {
-            e.password = '' // 密码置为空字符串
-        });
-        res.send(result);
-    });
+// 获取状态用户列表
+exports.getStatusUserList = (req, res) => {
+	const number = (req.body.pager - 1) * 10
+	const sql = `select * from users 
+                        where status = ${req.body.status}
+                        order by create_time limit 10 offset ${number}`
+	db.query(sql, (err, result) => {
+		if (err) return res.ce(err)
+		result.forEach((e) => {
+			e.password = ''
+		})
+		res.send(result)
+	})
 }
 
-// 上传头像
-exports.uploadAvatar = (req, res) => {
-	// res.send(req.files[0])
-	let oldName = req.files[0].filename
-	let newName = `${req.body.account}_` + req.files[0].originalname
-	fs.renameSync('public/upload/'+ oldName,'public/upload/'+ newName)
-	const sql = 'update users set image_url = ? where account =?'
-	db.query(sql,[`http://127.0.0.1:3000/upload/${newName}`,req.body.account],(err,result)=>{
+// 获取指定页码的用户列表
+exports.getUserListForPage = (req, res) => {
+	const number = (req.body.pager - 1) * 10
+	const sql = `select * from users
+                        order by create_time limit 10 offset ${number}`
+	db.query(sql, (err, result) => {
+		if (err) return res.ce(err)
+		result.forEach((e) => {
+			e.password = ''
+		})
+		res.send(result)
+	})
+}
+
+// 获取所有用户数量
+exports.getUserLength = (req, res) => {
+	const sql = `select * from users`
+	db.query(sql, (err, result) => {
 		if (err) return res.ce(err)
 		res.send({
-			status:0,
-			message:'修改头像成功'
+			length: result.length
 		})
 	})
 }
 
-//实现分页(获取所有用户的数量)
-exports.returnUserList = (req,res)=>{
-	const number = (req.body.pager -1) * 2
-	const sql = `select * from users
-	where status = 0 order by id limit 2 offset ${number}`
-	db.query(sql,(err,result)=>{
-		if(err) return res.ce(err)
+// 删除用户
+exports.deleteUser = (req, res) => {
+	const sql = `select image_url from users where id = ${req.body.id} `
+	db.query(sql, (err, result) => {
+		if (err) return res.ce(err)
+		if(result[0].image_url!==null){
+			image_url = result[0].image_url?.slice(29)
+			fs.unlink(`./public/upload/${image_url}`, (err) => {
+				if (err) return res.ce(err)
+			})
+		}
+		const sql1 = `delete from users where id = ${req.body.id}`
+		db.query(sql1, req.body.id, (err, result) => {
+			if (err) return res.ce(err)
+			res.send({
+				status: 0,
+				message: '删除用户成功'
+			})
+		})
+	})
+}
+
+// id初始为1000
+let image_id = 1000
+// 上传头像
+exports.uploadAvatar = (req, res) => {
+	let oldName = req.files[0].filename
+	image_id++
+	// 添加唯一id作为前缀
+	let newName = `${image_id}` + req.files[0].originalname
+	fs.renameSync('./public/upload/' + oldName, './public/upload/' + newName)
+	res.send({
+		status: 0,
+		url: `http://127.0.0.1:3007/upload/${newName}`
+	})
+}
+
+// 绑定账号
+exports.bindAccount = (req, res) => {
+	const {
+		account,
+		url
+	} = req.body
+	const sql = 'update users set image_url = ? where account = ?'
+	db.query(sql, [url, account], (err, result) => {
+		if (err) return res.ce(err)
+		res.send({
+			status: 0,
+			message: '修改成功'
+		})
+	})
+}
+
+// 修改用户部门或职位
+exports.changeLevel = (req, res) => {
+	const update_time = new Date()
+	let sql = null
+	let content = null
+	if (req.body.department) {
+		content = req.body.department
+		sql = `update users set 
+                            department = ?,
+                            update_time = ? where id = ${req.body.id}`
+	}
+	if (req.body.position) {
+		content = req.body.position
+		sql = `update users set
+                            position = ?,
+                            update_time = ? where id = ${req.body.id}`
+	}
+	db.query(sql, [content, update_time], (err, result) => {
+		if (err) return res.ce(err)
+		res.send({
+			status: 0,
+			message: '修改角色成功'
+		})
+	})
+}
+
+// 获取指定部门的用户列表
+exports.getUserByDepartment = (req, res) => {
+	const number = (req.body.pager - 1) * 10
+	const department = req.body.department
+	sql = `select * from users 
+                where department = ? and status = 0 
+                order by create_time limit 10 offset ${number}`
+	db.query(sql, department, (err, result) => {
+		if (err) return res.ce(err)
+		result.forEach((e) => {
+			e.password = ''
+		})
 		res.send(result)
 	})
 }
+
+// 返回指定部门总人数
+exports.UserLengthForDepartment = (req, res) => {
+	sql = `select * from users 
+                where department = ? and status = 0 `
+	db.query(sql, req.body.department, (err, result) => {
+		if (err) return res.ce(err)
+		res.send({
+			length:result.length
+		})
+	})
+}
+
+// 返回指定状态总人数
+exports.UserLengthForStatus = (req, res) => {
+	sql = `select * from users 
+                where status = ?`
+	db.query(sql, req.body.status, (err, result) => {
+		if (err) return res.ce(err)
+		res.send({
+			length:result.length
+		})
+	})
+}
+
+// 获取用户信息
+exports.getUserInfo = (req, res) => {
+	const sql = `select * from users where account = ${req.body.account}`
+	db.query(sql, (err, result) => {
+		if (err) return res.ce(err)
+		result[0].password = ''
+		res.send(result[0])
+	})
+}
+
