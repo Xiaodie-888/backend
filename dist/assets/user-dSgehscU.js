@@ -1,0 +1,1 @@
+import{n as o,r as n}from"./index-Rub71TYy.js";import{g as t}from"./user-B5O29gJi.js";const i=o("userInfo",()=>{const e=n();return{imageUrl:e,userInfo:async s=>{const r=await t(s);console.log(r),e.value=r.image_url}}},{persist:!0});export{i as u};
